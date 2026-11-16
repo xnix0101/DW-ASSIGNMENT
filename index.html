@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#16302F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Breather Study Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: one phone-width app column; focus lives in a dark pine world, breaks in a warm amber world. */
+:root {
+  --ink: #16302F;
+  --pine: #1F4D4A;
+  --mint: #2A9D8F;
+  --amber: #F2A65A;
+  --paper: #F4F7F6;
+  --card: #FFFFFF;
+  --muted: #5B6F6D;
+  --line: #DCE5E3;
+  --warm: #FDF1E4;
+  --coral: #D9573A;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "DM Sans", "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: #E3EAE8; font-family: var(--body); color: var(--ink); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--mint); outline-offset: 2px; }
+h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+p { margin: 0; }
+
+.app { position: relative; max-width: 420px; height: 100%; margin: 0 auto; background: var(--paper); overflow: hidden; }
+@media (min-width: 520px) {
+  body { display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .app { height: min(860px, 100%); width: 400px; border-radius: 32px; box-shadow: 0 30px 60px -20px rgba(22,48,47,.35); }
+}
+.screen { position: absolute; inset: 0; display: none; flex-direction: column; overflow-y: auto; padding: 20px 20px 24px; }
+.screen.active { display: flex; }
+.screen.dark { background: var(--ink); color: #EAF3F1; }
+.screen.warm { background: var(--warm); }
+
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 40px; margin-bottom: 8px; }
+.icon-btn { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); display: grid; place-items: center; }
+.dark .icon-btn { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.14); }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; background: var(--card); border: 1px solid var(--line); color: var(--muted); }
+.dark .pill { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.12); color: #BFD4D0; }
+.warm .pill { background: #fff; border-color: #F1DCC4; color: #8A5A2B; }
+.grow { flex: 1; }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.muted { color: var(--muted); }
+.dark .muted { color: #A9C2BE; }
+.small { font-size: 13px; }
+.label { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+
+.btn { border: 0; border-radius: 16px; padding: 16px 20px; font-weight: 700; font-size: 16px; width: 100%; }
+.btn-primary { background: var(--mint); color: #fff; }
+.btn-primary:active { transform: translateY(1px); }
+.btn-amber { background: var(--ink); color: #fff; }
+.btn-ghost { background: transparent; border: 1px solid var(--line); color: var(--ink); }
+.dark .btn-ghost { border-color: rgba(255,255,255,.2); color: #EAF3F1; }
+.warm .btn-ghost { border-color: #EBCFAE; }
+.link-btn { background: none; border: 0; padding: 8px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; }
+
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 16px; }
+
+/* Home */
+.hero { padding: 22px 20px; border-radius: 24px; background: var(--ink); color: #EAF3F1; display: flex; flex-direction: column; gap: 14px; }
+.hero h1 { font-size: 30px; line-height: 1.1; }
+.hero p { color: #B9CFCB; font-size: 15px; line-height: 1.45; }
+.stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+.stat { background: var(--paper); border-radius: 14px; padding: 10px; }
+.stat b { display: block; font-family: var(--display); font-size: 20px; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12px; color: var(--muted); }
+.switch-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.switch { position: relative; width: 48px; height: 28px; border-radius: 999px; border: 0; background: var(--line); flex-shrink: 0; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+.switch[aria-checked="true"] { background: var(--mint); }
+.switch[aria-checked="true"]::after { transform: translateX(20px); }
+
+/* Plan */
+.field { display: flex; flex-direction: column; gap: 8px; }
+.field input::placeholder { color: #A7B5B3; opacity: 1; }
+.field input { width: 100%; padding: 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); font: inherit; font-size: 16px; color: var(--ink); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); font-weight: 500; font-size: 15px; }
+.chip[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+.chip small { display: block; font-size: 11px; font-weight: 400; opacity: .75; }
+.timeline { display: flex; gap: 3px; height: 14px; border-radius: 8px; overflow: hidden; }
+.timeline span { display: block; height: 100%; border-radius: 4px; }
+.seg-f { background: var(--mint); }
+.seg-b { background: var(--amber); }
+.legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+
+/* Focus */
+.ring-wrap { position: relative; width: 260px; height: 260px; margin: 12px auto 4px; }
+.ring-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring-bg { stroke: rgba(255,255,255,.1); }
+.ring-fg { stroke: var(--mint); transition: stroke-dashoffset .25s linear; }
+.warm .ring-bg { stroke: #F3DCC2; }
+.warm .ring-fg { stroke: var(--amber); }
+.ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; }
+.big-time { font-family: var(--display); font-size: 56px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+.task-box { border-radius: 18px; padding: 14px 16px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); }
+.task-box h2 { font-size: 20px; margin-top: 4px; }
+.dots { display: flex; gap: 6px; justify-content: center; }
+.dots span { width: 26px; height: 6px; border-radius: 4px; background: rgba(255,255,255,.15); }
+.dots span.done { background: var(--mint); }
+.dots span.now { background: #EAF3F1; }
+.dots span.brk { width: 10px; background: rgba(242,166,90,.35); }
+.dots span.brk.done { background: var(--amber); }
+.row { display: flex; gap: 10px; }
+.row > * { flex: 1; }
+.skip { display: none; }
+.demo-on .skip { display: inline-flex; }
+
+/* Break picker */
+.break-head h1 { font-size: 28px; line-height: 1.15; }
+.acts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.act { text-align: left; border: 1px solid #F1DCC4; background: #fff; border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 10px; min-height: 140px; }
+.act .ico { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--warm); color: #9A5B1F; }
+.act b { font-size: 16px; }
+.act span { font-size: 13px; color: var(--muted); line-height: 1.35; }
+.act.phone { border-style: dashed; }
+.act.custom { grid-column: 1 / -1; min-height: 0; flex-direction: row; align-items: center; gap: 14px; border: 2px solid var(--amber); }
+.act.custom .ico { background: var(--amber); color: var(--ink); flex-shrink: 0; }
+.act.custom .txt { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.act.custom .txt b { overflow-wrap: anywhere; color: var(--ink); }
+.act.custom .txt span { overflow-wrap: anywhere; }
+.act[hidden] { display: none; }
+.nav-card { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; }
+.nav-card .ico { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--amber); color: var(--ink); flex-shrink: 0; }
+.nav-card .txt { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.nav-card .txt b { font-size: 16px; overflow-wrap: anywhere; }
+.nav-card .txt span { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.step-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.step-row { display: flex; align-items: center; gap: 10px; }
+.step-row .n { flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; background: var(--amber); color: var(--ink); font-weight: 700; font-size: 13px; display: grid; place-items: center; }
+.step-row input { flex: 1; min-width: 0; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); font: inherit; font-size: 15px; color: var(--ink); }
+.step-row input::placeholder { color: #A7B5B3; opacity: 1; }
+.step-row .rm { flex-shrink: 0; width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--muted); display: grid; place-items: center; }
+.add-step { align-self: flex-start; padding: 10px 14px; border-radius: 12px; border: 1px dashed var(--line); background: transparent; font-weight: 500; font-size: 14px; }
+.err { color: var(--coral); font-size: 13px; display: none; }
+.err.show { display: block; }
+.opt { text-transform: none; letter-spacing: 0; font-weight: 400; }
+.act.phone .ico { background: #EEF2F1; color: var(--pine); }
+
+/* Break running */
+.steps { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.steps li { display: flex; gap: 12px; align-items: flex-start; background: #fff; border: 1px solid #F1DCC4; border-radius: 14px; padding: 12px 14px; font-size: 15px; line-height: 1.4; }
+.steps li .n { flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%; background: var(--amber); color: var(--ink); font-weight: 700; font-size: 13px; display: grid; place-items: center; }
+
+/* Toast (simulated phone notification) */
+.toast { position: absolute; left: 12px; right: 12px; top: 12px; z-index: 20; background: rgba(22,48,47,.96); color: #fff; border-radius: 18px; padding: 12px 14px; display: flex; gap: 12px; align-items: center; box-shadow: 0 12px 30px -8px rgba(0,0,0,.45); transform: translateY(-140%); transition: transform .35s ease; }
+.toast.show { transform: translateY(0); }
+.toast .ico { width: 36px; height: 36px; border-radius: 10px; background: var(--amber); color: var(--ink); display: grid; place-items: center; flex-shrink: 0; }
+.toast b { display: block; font-size: 14px; }
+.toast span { font-size: 13px; color: #C8DAD7; }
+
+/* Return */
+.return-card { background: #fff; border-radius: 24px; padding: 22px; border: 1px solid #F1DCC4; display: flex; flex-direction: column; gap: 10px; }
+.return-card h2 { font-size: 26px; }
+.over { font-variant-numeric: tabular-nums; font-weight: 700; }
+.over.late { color: var(--coral); }
+.return-card .dots span:not(.done):not(.brk) { background: #E7D6C2; }
+.nudge { border-radius: 16px; padding: 14px; background: #fff; border: 1px solid #F1DCC4; font-size: 15px; line-height: 1.45; display: none; }
+.nudge.show { display: block; }
+
+/* Summary */
+.sum-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sum-grid .card b { display: block; font-family: var(--display); font-size: 30px; font-variant-numeric: tabular-nums; }
+.sum-grid .card span { font-size: 13px; color: var(--muted); }
+.break-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.break-list li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); font-size: 15px; }
+.tag { font-size: 12px; font-weight: 700; padding: 4px 8px; border-radius: 999px; white-space: nowrap; }
+.tag.ok { background: #DDF1EC; color: #1C6E63; }
+.tag.late { background: #FBE3DC; color: #A63E25; }
+.tag.early { background: #E6EEF7; color: #2D5784; }
+.rating { display: flex; gap: 8px; }
+.rating button { flex: 1; aspect-ratio: 1; max-height: 56px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); font-weight: 700; font-size: 18px; }
+.rating button[aria-pressed="true"] { background: var(--mint); color: #fff; border-color: var(--mint); }
+.rating-scale { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+
+/* Modal */
+.modal { position: absolute; inset: 0; z-index: 30; background: rgba(10,25,24,.55); display: none; align-items: flex-end; padding: 12px; }
+.modal.show { display: flex; }
+.sheet { background: var(--card); color: var(--ink); border-radius: 24px; padding: 20px; width: 100%; display: flex; flex-direction: column; gap: 12px; }
+.sheet h3 { font-size: 20px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="app demo-on" id="app">
+
+  <!-- Simulated phone notification -->
+  <div class="toast" id="toast" role="status" aria-live="polite">
+    <div class="ico" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M5 3 2 6M22 6l-3-3"/></svg></div>
+    <div><b id="toastTitle">1 minute left</b><span id="toastBody">Start wrapping up your break.</span></div>
+  </div>
+
+  <!-- 1. HOME -->
+  <section class="screen active" id="s-home" aria-label="Home">
+    <div class="topbar">
+      <span class="pill"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 14c3-1 5-4 6-9 2 4 6 6 10 6-4 2-6 5-7 9-1-4-5-6-9-6Z"/></svg>Breather</span>
+      <span class="pill" id="demoPill">Demo speed on</span>
+    </div>
+    <div class="stack grow">
+      <div class="hero">
+        <span class="label" style="color:#8FB3AD">Study planner</span>
+        <h1>Study, take a real break, come back on time.</h1>
+        <p>Plan a session in under a minute. When a break comes, we'll help you pick one that actually recharges you, then get you back to work.</p>
+        <button class="btn btn-primary" id="goPlan">Plan a study session</button>
+      </div>
+
+      <button class="card nav-card" id="goCustom">
+        <span class="ico" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9Z"/></svg></span>
+        <span class="txt"><b id="homeCustomTitle">Create your own break</b><span id="homeCustomSub">Plan a break your way, step by step</span></span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+
+      <div class="card">
+        <div class="switch-row">
+          <div><span class="label">Last session</span> <span class="pill" id="lastTag" style="margin-left:6px">Example</span></div>
+        </div>
+        <h3 style="font-size:18px;margin-top:8px" id="lastTask">Organic Chemistry, Ch 7</h3>
+        <div class="stat-row">
+          <div class="stat"><b id="lastFocus">75m</b><span>focused</span></div>
+          <div class="stat"><b id="lastBreaks">2/2</b><span>breaks on time</span></div>
+          <div class="stat"><b id="lastReady">4/5</b><span>felt ready</span></div>
+        </div>
+      </div>
+
+      <div class="card switch-row">
+        <div>
+          <b style="font-size:15px">Demo speed</b>
+          <p class="muted small" style="margin-top:2px">Timers run 20× faster for presenting and testing.</p>
+        </div>
+        <button class="switch" role="switch" aria-checked="true" aria-label="Demo speed" id="demoSwitch"></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1b. CUSTOM BREAK -->
+  <section class="screen" id="s-custom" aria-label="Your own break">
+    <div class="topbar">
+      <button class="icon-btn" id="customBack" aria-label="Back"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <span class="pill">Your own break</span>
+    </div>
+    <div class="stack grow" style="gap:20px">
+      <div class="stack" style="gap:6px">
+        <h1 style="font-size:28px">Make your own break</h1>
+        <p class="muted">It'll show up as an option every time a break starts.</p>
+      </div>
+      <div class="field">
+        <label class="label" for="customName">Break name</label>
+        <input id="customName" placeholder="e.g. Make chai" autocomplete="off" maxlength="40">
+        <p class="err" id="customErr" role="alert">Give your break a name first.</p>
+      </div>
+      <div class="field">
+        <span class="label" id="stepsLabel">Steps</span>
+        <ol class="step-list" id="stepList" aria-labelledby="stepsLabel"></ol>
+        <button class="add-step" id="addStep">+ Add a step</button>
+      </div>
+    </div>
+    <div class="stack" style="gap:6px;margin-top:20px">
+      <button class="btn btn-primary" id="saveCustom">Save break</button>
+      <button class="link-btn" id="removeCustom">Remove this break</button>
+    </div>
+  </section>
+
+  <!-- 2. PLAN -->
+  <section class="screen" id="s-plan" aria-label="Plan a session">
+    <div class="topbar">
+      <button class="icon-btn" id="planBack" aria-label="Back"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <span class="pill">Step 1 of 1</span>
+    </div>
+    <div class="stack grow" style="gap:20px">
+      <h1 style="font-size:28px">Plan your session</h1>
+
+      <div class="field">
+        <label class="label" for="taskInput">What are you studying?</label>
+        <input id="taskInput" placeholder="e.g. Thermodynamics, Ch 4" autocomplete="off">
+      </div>
+
+      <div class="field">
+        <span class="label" id="lenLabel">How long?</span>
+        <div class="chips" role="group" aria-labelledby="lenLabel" id="lenChips">
+          <button class="chip" data-len="30" aria-pressed="false">30 min</button>
+          <button class="chip" data-len="60" aria-pressed="true">1 hr</button>
+          <button class="chip" data-len="90" aria-pressed="false">1.5 hr</button>
+          <button class="chip" data-len="120" aria-pressed="false">2 hr</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="label" id="rhyLabel">Focus / break rhythm</span>
+        <div class="chips" role="group" aria-labelledby="rhyLabel" id="rhyChips">
+          <button class="chip" data-f="25" data-b="5" aria-pressed="true">25 / 5<small>Classic Pomodoro</small></button>
+          <button class="chip" data-f="50" data-b="10" aria-pressed="false">50 / 10<small>Longer deep work</small></button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="label" for="nextInput">After the break, start with… <span style="text-transform:none;letter-spacing:0;font-weight:400">(optional)</span></label>
+        <input id="nextInput" placeholder="e.g. Solve Q3 to Q5" autocomplete="off">
+        <p class="muted small">We'll show this when you come back, so you don't restart cold.</p>
+      </div>
+
+      <div class="card stack" style="gap:10px">
+        <div class="switch-row"><span class="label">Your session</span><b id="planTotal" style="font-variant-numeric:tabular-nums">50 min focus</b></div>
+        <div class="timeline" id="planTimeline" aria-hidden="true"></div>
+        <div class="legend"><span><i class="seg-f"></i>Focus</span><span><i class="seg-b"></i>Break</span><span id="planCount">2 blocks, 1 break</span></div>
+      </div>
+    </div>
+    <button class="btn btn-primary" id="startBtn" style="margin-top:20px">Start session</button>
+  </section>
+
+  <!-- 3. FOCUS -->
+  <section class="screen dark" id="s-focus" aria-label="Focus">
+    <div class="topbar">
+      <span class="pill" id="focusBlockLabel">Focus 1 of 2</span>
+      <button class="pill skip" id="skipFocus" style="cursor:pointer">Skip ahead ▸</button>
+    </div>
+    <div class="dots" id="focusDots" aria-hidden="true"></div>
+    <div class="ring-wrap">
+      <svg viewBox="0 0 120 120" aria-hidden="true"><circle class="ring-bg" cx="60" cy="60" r="54" fill="none" stroke-width="7"/><circle class="ring-fg" id="focusRing" cx="60" cy="60" r="54" fill="none" stroke-width="7" stroke-linecap="round" stroke-dasharray="339.3" stroke-dashoffset="0"/></svg>
+      <div class="ring-center">
+        <span class="big-time" id="focusTime">25:00</span>
+        <span class="muted small" id="focusSub">until your break</span>
+      </div>
+    </div>
+    <div class="stack grow">
+      <div class="task-box">
+        <span class="label" style="color:#8FB3AD">Studying</span>
+        <h2 id="focusTask">Thermodynamics, Ch 4</h2>
+      </div>
+      <p class="muted small" style="text-align:center">Your study apps stay open. Nothing is blocked.</p>
+    </div>
+    <div class="row" style="margin-top:16px">
+      <button class="btn btn-ghost" id="pauseBtn">Pause</button>
+      <button class="btn btn-ghost" id="endBtn">End session</button>
+    </div>
+  </section>
+
+  <!-- 4. BREAK PICKER -->
+  <section class="screen warm" id="s-pick" aria-label="Choose a break">
+    <div class="topbar">
+      <span class="pill" id="pickTimer">5 min break</span>
+      <span class="pill">Timer starts when you pick</span>
+    </div>
+    <div class="stack grow" style="gap:18px">
+      <div class="break-head stack" style="gap:6px">
+        <span class="label" style="color:#9A5B1F">Nice work, block done</span>
+        <h1>How do you want to spend this break?</h1>
+        <p class="muted">Pick one. Anything that gets your eyes off the screen recharges you more.</p>
+      </div>
+      <div class="acts">
+        <button class="act custom" data-act="custom" id="customAct" hidden>
+          <span class="ico" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9Z"/></svg></span>
+          <span class="txt"><b id="customActName">Your break</b><span id="customActHow">Your own break idea</span></span>
+        </button>
+        <button class="act" data-act="stretch">
+          <span class="ico" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4" r="2"/><path d="M4 9l8 2 8-2M12 11v4l-3 6M12 15l3 6"/></svg></span>
+          <b>Stretch</b><span>3 quick moves to loosen up</span>
+        </button>
+        <button class="act" data-act="water">
+          <span class="ico" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11Z"/></svg></span>
+          <b>Water + walk</b><span>Refill and move around</span>
+        </button>
+        <button class="act" data-act="eyes">
+          <span class="ico" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></span>
+          <b>Rest your eyes</b><span>Look far away, then close them</span>
+        </button>
+        <button class="act phone" data-act="phone">
+          <span class="ico" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></svg></span>
+          <b>Phone time</b><span>Scroll freely; we'll bring you back on time</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. BREAK RUNNING -->
+  <section class="screen warm" id="s-break" aria-label="Break in progress">
+    <div class="topbar">
+      <span class="pill" id="breakLabel">Stretch</span>
+      <button class="pill skip" id="skipBreak" style="cursor:pointer">Skip ahead ▸</button>
+    </div>
+    <div class="ring-wrap" style="width:210px;height:210px">
+      <svg viewBox="0 0 120 120" aria-hidden="true"><circle class="ring-bg" cx="60" cy="60" r="54" fill="none" stroke-width="7"/><circle class="ring-fg" id="breakRing" cx="60" cy="60" r="54" fill="none" stroke-width="7" stroke-linecap="round" stroke-dasharray="339.3" stroke-dashoffset="0"/></svg>
+      <div class="ring-center">
+        <span class="big-time" id="breakTime" style="font-size:48px">5:00</span>
+        <span class="muted small">break left</span>
+      </div>
+    </div>
+    <div class="stack grow" style="gap:14px;margin-top:8px">
+      <h2 style="font-size:22px" id="breakTitle">Loosen up</h2>
+      <ol class="steps" id="breakSteps"></ol>
+    </div>
+    <button class="btn btn-ghost" id="backEarly" style="margin-top:16px">I'm back, start studying</button>
+  </section>
+
+  <!-- 6. RETURN -->
+  <section class="screen warm" id="s-return" aria-label="Back to studying">
+    <div class="topbar">
+      <span class="pill">Break over</span>
+      <span class="pill" id="overPill"><span class="over" id="overTime">+0:00</span></span>
+    </div>
+    <div class="stack grow" style="gap:14px;justify-content:center">
+      <div class="return-card">
+        <span class="label" style="color:#9A5B1F">Welcome back</span>
+        <h2 id="returnTask">Back to: Thermodynamics, Ch 4</h2>
+        <p class="muted" id="returnNext">Start with: Solve Q3 to Q5</p>
+        <div class="dots" id="returnDots" aria-hidden="true" style="justify-content:flex-start;margin-top:6px"></div>
+        <p class="muted small" id="returnLeft">1 focus block left, 25 min</p>
+      </div>
+      <div class="nudge" id="nudge" role="status">
+        <b>Still with us?</b> No pressure. Your next step is small: <span id="nudgeNext">Solve Q3 to Q5</span>. Just open the first question.
+      </div>
+    </div>
+    <div class="stack" style="gap:6px;margin-top:16px">
+      <button class="btn btn-amber" id="resumeBtn">Start focus block</button>
+      <button class="link-btn" id="snoozeBtn">I need 2 more minutes</button>
+    </div>
+  </section>
+
+  <!-- 7. SUMMARY -->
+  <section class="screen" id="s-summary" aria-label="Session summary">
+    <div class="topbar">
+      <span class="pill">Session complete</span>
+    </div>
+    <div class="stack grow" style="gap:18px">
+      <div class="stack" style="gap:6px">
+        <h1 style="font-size:28px" id="sumTitle">Nice session.</h1>
+        <p class="muted" id="sumTask">Thermodynamics, Ch 4</p>
+      </div>
+      <div class="sum-grid">
+        <div class="card"><b id="sumFocus">50m</b><span>focused</span></div>
+        <div class="card"><b id="sumBreaks">1/1</b><span>breaks ended on time</span></div>
+      </div>
+      <div class="stack" style="gap:8px">
+        <span class="label">Your breaks</span>
+        <ul class="break-list" id="sumList"></ul>
+      </div>
+      <div class="card stack" style="gap:10px">
+        <b style="font-size:15px" id="rateQ">How ready did you feel to study after your breaks?</b>
+        <div class="rating" role="group" aria-labelledby="rateQ" id="rating">
+          <button aria-pressed="false" data-r="1">1</button><button aria-pressed="false" data-r="2">2</button><button aria-pressed="false" data-r="3">3</button><button aria-pressed="false" data-r="4">4</button><button aria-pressed="false" data-r="5">5</button>
+        </div>
+        <div class="rating-scale"><span>Not at all</span><span>Fully ready</span></div>
+      </div>
+      <p class="muted small">We don't track your screen time or other apps. Only what you did in Breather.</p>
+    </div>
+    <button class="btn btn-primary" id="finishBtn" style="margin-top:16px">Finish</button>
+  </section>
+
+  <!-- End-session confirmation -->
+  <div class="modal" id="endModal" role="dialog" aria-modal="true" aria-labelledby="endTitle">
+    <div class="sheet">
+      <h3 id="endTitle">End this session early?</h3>
+      <p class="muted">That's fine. You'll still see a summary of what you got done.</p>
+      <div class="row">
+        <button class="btn btn-ghost" id="endCancel">Keep going</button>
+        <button class="btn btn-primary" id="endConfirm">End session</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var CIRC = 339.3;
+  var GRACE = 60;          // seconds after break end that still count as on time
+  var SNOOZE = 120;        // seconds added by "2 more minutes"
+  var NUDGE_AFTER = 120;   // seconds over before the second, softer nudge
+
+  var ACTS = {
+    stretch: { name: "Stretch", title: "Loosen up", steps: ["Roll your neck slowly, 5 times each way.", "Shrug your shoulders up to your ears, then drop them. Repeat 5 times.", "Stand up and reach for the ceiling for 10 seconds."] },
+    water: { name: "Water + walk", title: "Refill and move", steps: ["Get up and fill your water bottle.", "Walk to a window or around the room.", "Drink a full glass before you sit back down."] },
+    eyes: { name: "Rest your eyes", title: "Give your eyes a rest", steps: ["Look at something at least 20 feet away for 20 seconds.", "Close your eyes and breathe slowly for a minute.", "Roll your eyes gently in a circle, then blink a few times."] },
+    phone: { name: "Phone time", title: "Enjoy your scroll", steps: ["Go ahead, this time is yours.", "We'll send a heads-up 1 minute before the break ends.", "When the timer hits zero, we'll bring you back here."] },
+    none: { name: "Didn't choose" }
+  };
+
+  var state = {
+    demo: true,
+    plan: { task: "Thermodynamics, Ch 4", next: "Solve Q3 to Q5", len: 60, f: 25, b: 5 },
+    phases: [], idx: 0,
+    phaseStart: 0, extra: 0, pausedAt: 0, paused: false,
+    act: null, warned: false, snoozed: false, returnShown: false, nudged: false,
+    breaks: [], focusDone: 0, focusSec: 0, rating: 0
+  };
+
+  function speed() { return state.demo ? 20 : 1; }
+  function now() { return Date.now(); }
+  function elapsed() {
+    var t = state.paused ? state.pausedAt : now();
+    return ((t - state.phaseStart) / 1000) * speed();
+  }
+  function phase() { return state.phases[state.idx]; }
+  function fmt(sec) {
+    sec = Math.max(0, Math.round(sec));
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return m + ":" + (s < 10 ? "0" : "") + s;
+  }
+  function show(id) {
+    var list = document.querySelectorAll(".screen");
+    for (var i = 0; i < list.length; i++) list[i].classList.toggle("active", list[i].id === id);
+    $(id).scrollTop = 0;
+  }
+  function store(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
+  function load(key) { try { var v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
+
+  /* ---------- Plan ---------- */
+  function buildPhases(p) {
+    // Fill the chosen length with focus/break cycles; a break is never the last thing.
+    var out = [], left = p.len;
+    while (left > 0) {
+      var f = Math.min(p.f, left);
+      out.push({ type: "focus", dur: f * 60 });
+      left -= f;
+      if (left > p.b) { out.push({ type: "break", dur: p.b * 60 }); left -= p.b; }
+      else left = 0;
+    }
+    var focus = out.filter(function (x) { return x.type === "focus"; });
+    focus.forEach(function (x, i) { x.n = i + 1; x.of = focus.length; });
+    return out;
+  }
+  function renderPlan() {
+    var ph = buildPhases(state.plan);
+    var total = ph.reduce(function (a, x) { return a + x.dur; }, 0) / 60;
+    var focusMin = ph.reduce(function (a, x) { return a + (x.type === "focus" ? x.dur : 0); }, 0) / 60;
+    var tl = $("planTimeline"); tl.innerHTML = "";
+    ph.forEach(function (x) {
+      var s = document.createElement("span");
+      s.className = x.type === "focus" ? "seg-f" : "seg-b";
+      s.style.flex = String(x.dur);
+      tl.appendChild(s);
+    });
+    var blocks = ph.filter(function (x) { return x.type === "focus"; }).length;
+    var brks = blocks - 1;
+    $("planTotal").textContent = focusMin + " min focus";
+    $("planCount").textContent = blocks + " block" + (blocks > 1 ? "s" : "") + ", " + brks + " break" + (brks === 1 ? "" : "s") + " · " + total + " min total";
+  }
+  function chipGroup(groupId, onPick) {
+    var g = $(groupId);
+    g.addEventListener("click", function (e) {
+      var c = e.target.closest(".chip"); if (!c) return;
+      g.querySelectorAll(".chip").forEach(function (x) { x.setAttribute("aria-pressed", x === c ? "true" : "false"); });
+      onPick(c); renderPlan();
+    });
+  }
+  chipGroup("lenChips", function (c) { state.plan.len = +c.dataset.len; });
+  chipGroup("rhyChips", function (c) { state.plan.f = +c.dataset.f; state.plan.b = +c.dataset.b; });
+
+  /* ---------- Session ---------- */
+  function startSession() {
+    state.plan.task = $("taskInput").value.trim() || "Study session";
+    state.plan.next = $("nextInput").value.trim();
+    if (custom && custom.name) {
+      ACTS.custom = { name: custom.name, title: custom.name, steps: custom.steps.length ? custom.steps : ["Take your time. We'll send a heads-up 1 minute before the break ends."] };
+      $("customActName").textContent = custom.name;
+      $("customActHow").textContent = custom.steps.length ? custom.steps.length + " step" + (custom.steps.length > 1 ? "s" : "") + ": " + custom.steps[0] : "Your own break";
+      $("customAct").hidden = false;
+    } else {
+      delete ACTS.custom;
+      $("customAct").hidden = true;
+    }
+    state.phases = buildPhases(state.plan);
+    state.idx = 0; state.breaks = []; state.focusDone = 0; state.focusSec = 0; state.rating = 0;
+    beginPhase();
+  }
+  function beginPhase() {
+    state.phaseStart = now(); state.extra = 0; state.paused = false;
+    state.act = null; state.breakStarted = false; state.warned = false; state.snoozed = false; state.returnShown = false; state.nudged = false;
+    hideToast();
+    var p = phase();
+    if (p.type === "focus") {
+      $("focusTask").textContent = state.plan.task;
+      $("focusBlockLabel").textContent = "Focus " + p.n + " of " + p.of;
+      $("focusSub").textContent = p.n === p.of ? "until you're done" : "until your break";
+      $("pauseBtn").textContent = "Pause";
+      renderDots($("focusDots"));
+      show("s-focus");
+    } else {
+      show("s-pick");
+    }
+    tick();
+  }
+  function renderDots(el) {
+    el.innerHTML = "";
+    state.phases.forEach(function (x, i) {
+      var s = document.createElement("span");
+      if (x.type === "break") s.className = "brk";
+      if (i < state.idx) s.className += " done";
+      else if (i === state.idx && x.type === "focus") s.className += " now";
+      el.appendChild(s);
+    });
+  }
+  function remaining() { var p = phase(); return p.dur + state.extra - elapsed(); }
+
+  function finishFocus(partialSec) {
+    var p = phase();
+    var done = partialSec == null ? p.dur : partialSec;
+    state.focusSec += done;
+    if (partialSec == null) state.focusDone++;
+  }
+  function nextPhase() {
+    state.idx++;
+    if (state.idx >= state.phases.length) { showSummary(); return; }
+    beginPhase();
+  }
+  function endBreak(early) {
+    var p = phase();
+    var over = Math.max(0, elapsed() - (p.dur + state.extra));
+    state.breaks.push({
+      act: state.act || "none",
+      early: !!early,
+      over: over,
+      onTime: over <= GRACE,
+      snoozed: state.snoozed
+    });
+    nextPhase();
+  }
+
+  /* ---------- Toast ---------- */
+  var toastTimer = null;
+  function showToast(title, body) {
+    $("toastTitle").textContent = title; $("toastBody").textContent = body;
+    $("toast").classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(hideToast, 4500);
+  }
+  function hideToast() { $("toast").classList.remove("show"); }
+
+  /* ---------- Tick ---------- */
+  function setRing(el, frac) { el.style.strokeDashoffset = String(CIRC * (1 - Math.max(0, Math.min(1, frac)))); }
+
+  function tick() {
+    var p = phase(); if (!p) return;
+    var active = document.querySelector(".screen.active").id;
+    var rem = remaining();
+    if (p.type === "focus") {
+      if (active !== "s-focus") return;
+      $("focusTime").textContent = fmt(rem);
+      setRing($("focusRing"), rem / p.dur);
+      if (rem <= 0 && !state.paused) { finishFocus(); nextPhase(); }
+      return;
+    }
+    // break
+    var total = p.dur + state.extra;
+    if (active === "s-pick") {
+      $("pickTimer").textContent = (p.dur / 60) + " min break";
+      return; // break clock hasn't started yet
+    }
+    if (rem <= 60 && rem > 0 && !state.warned && active === "s-break") {
+      state.warned = true;
+      showToast("1 minute left", "Start wrapping up your break.");
+    }
+    if (active === "s-break") {
+      $("breakTime").textContent = fmt(rem);
+      setRing($("breakRing"), rem / total);
+      if (rem <= 0) openReturn();
+    } else if (active === "s-return") {
+      var over = Math.max(0, -rem);
+      $("overTime").textContent = "+" + fmt(over) + " over";
+      $("overTime").classList.toggle("late", over > GRACE);
+      if (over >= NUDGE_AFTER && !state.nudged) {
+        state.nudged = true;
+        $("nudge").classList.add("show");
+        showToast("Ready when you are", "Your next step is a small one.");
+      }
+    }
+  }
+  setInterval(tick, 250);
+
+  /* ---------- Break flow ---------- */
+  function openBreak(act) {
+    state.act = act;
+    if (!state.breakStarted) { state.breakStarted = true; state.phaseStart = now(); state.extra = 0; }
+    var a = ACTS[act];
+    $("breakLabel").textContent = a.name;
+    $("breakTitle").textContent = a.title;
+    var ol = $("breakSteps"); ol.innerHTML = "";
+    a.steps.forEach(function (t, i) {
+      var li = document.createElement("li");
+      li.innerHTML = '<span class="n">' + (i + 1) + '</span><span></span>';
+      li.lastChild.textContent = t;
+      ol.appendChild(li);
+    });
+    show("s-break"); tick();
+  }
+  function openReturn() {
+    if (state.returnShown) return;
+    state.returnShown = true;
+    hideToast();
+    var nextFocus = state.phases[state.idx + 1];
+    $("returnTask").textContent = "Back to: " + state.plan.task;
+    $("returnNext").textContent = state.plan.next ? "Start with: " + state.plan.next : "Pick up where you left off.";
+    $("returnNext").style.display = "";
+    $("nudgeNext").textContent = state.plan.next || "pick up where you left off";
+    var left = state.phases.slice(state.idx + 1).filter(function (x) { return x.type === "focus"; }).length;
+    $("returnLeft").textContent = left + " focus block" + (left > 1 ? "s" : "") + " left · next one " + (nextFocus ? nextFocus.dur / 60 : 0) + " min";
+    renderDots($("returnDots"));
+    $("returnDots").querySelectorAll("span").forEach(function (s) { s.style.background = ""; });
+    $("nudge").classList.remove("show");
+    $("snoozeBtn").style.display = state.snoozed ? "none" : "";
+    show("s-return");
+    showToast("Break's over", "Back to " + state.plan.task + ".");
+    tick();
+  }
+
+  /* ---------- Summary ---------- */
+  function showSummary() {
+    hideToast();
+    var mins = Math.round(state.focusSec / 60);
+    $("sumTask").textContent = state.plan.task;
+    $("sumFocus").textContent = mins + "m";
+    var onTime = state.breaks.filter(function (b) { return b.onTime; }).length;
+    $("sumBreaks").textContent = state.breaks.length ? onTime + "/" + state.breaks.length : "–";
+    $("sumTitle").textContent = state.breaks.length && onTime === state.breaks.length ? "Every break ended on time." : "Session done. Nice work.";
+    var ul = $("sumList"); ul.innerHTML = "";
+    if (!state.breaks.length) {
+      var li0 = document.createElement("li"); li0.textContent = "No breaks this session."; ul.appendChild(li0);
+    }
+    state.breaks.forEach(function (b, i) {
+      var li = document.createElement("li");
+      var name = document.createElement("span");
+      name.textContent = "Break " + (i + 1) + " · " + ACTS[b.act].name;
+      var tag = document.createElement("span");
+      if (b.early) { tag.className = "tag early"; tag.textContent = "Back early"; }
+      else if (b.onTime) { tag.className = "tag ok"; tag.textContent = b.snoozed ? "On time (+2 min)" : "On time"; }
+      else { tag.className = "tag late"; tag.textContent = Math.round(b.over / 60) + " min over"; }
+      li.appendChild(name); li.appendChild(tag); ul.appendChild(li);
+    });
+    $("rating").querySelectorAll("button").forEach(function (x) { x.setAttribute("aria-pressed", "false"); });
+    $("rateQ").textContent = state.breaks.length ? "How ready did you feel to study after your breaks?" : "How focused did this session feel?";
+    show("s-summary");
+  }
+  function renderLast(last) {
+    if (!last) return;
+    $("lastTag").textContent = "You";
+    $("lastTask").textContent = last.task;
+    $("lastFocus").textContent = last.focus + "m";
+    $("lastBreaks").textContent = last.breaks;
+    $("lastReady").textContent = last.ready ? last.ready + "/5" : "–";
+  }
+
+  /* ---------- Demo toggle ---------- */
+  function setDemo(on) {
+    // keep the current phase's position when speed changes
+    var e = elapsed();
+    state.demo = on;
+    var t = state.paused ? state.pausedAt : now();
+    state.phaseStart = t - (e / speed()) * 1000;
+    $("demoSwitch").setAttribute("aria-checked", on ? "true" : "false");
+    $("demoPill").textContent = on ? "Demo speed on" : "Real time";
+    $("app").classList.toggle("demo-on", on);
+    store("breather-demo", on);
+  }
+  function skipAhead() {
+    var p = phase(); if (!p) return;
+    // jump to 8 simulated seconds before the phase ends
+    var target = p.dur + state.extra - 8;
+    if (p.type === "break" && remaining() > 70) target = p.dur + state.extra - 66; // land just before the 1-minute warning
+    var t = state.paused ? state.pausedAt : now();
+    state.phaseStart = t - (Math.max(0, target) / speed()) * 1000;
+    tick();
+  }
+
+  /* ---------- Wiring ---------- */
+  $("goPlan").addEventListener("click", function () { renderPlan(); show("s-plan"); });
+  $("planBack").addEventListener("click", function () { show("s-home"); });
+  $("startBtn").addEventListener("click", startSession);
+  $("demoSwitch").addEventListener("click", function () { setDemo(!state.demo); });
+  $("skipFocus").addEventListener("click", skipAhead);
+    $("skipBreak").addEventListener("click", skipAhead);
+
+  $("pauseBtn").addEventListener("click", function () {
+    if (!state.paused) { state.paused = true; state.pausedAt = now(); this.textContent = "Resume"; }
+    else { state.phaseStart += now() - state.pausedAt; state.paused = false; this.textContent = "Pause"; }
+  });
+  $("endBtn").addEventListener("click", function () { $("endModal").classList.add("show"); $("endCancel").focus(); });
+  $("endCancel").addEventListener("click", function () { $("endModal").classList.remove("show"); });
+  $("endConfirm").addEventListener("click", function () {
+    $("endModal").classList.remove("show");
+    finishFocus(Math.min(phase().dur, elapsed()));
+    showSummary();
+  });
+
+  document.querySelector(".acts").addEventListener("click", function (e) {
+    var a = e.target.closest(".act"); if (a) openBreak(a.dataset.act);
+  });
+  $("backEarly").addEventListener("click", function () { endBreak(remaining() > 0); });
+  $("resumeBtn").addEventListener("click", function () { endBreak(false); });
+  $("snoozeBtn").addEventListener("click", function () {
+    var over = Math.max(0, -remaining());
+    state.extra += over + SNOOZE;   // 2 more minutes from now
+    state.snoozed = true; state.returnShown = false; state.warned = false;
+    if (state.act) openBreak(state.act); else show("s-pick");
+  });
+
+  $("rating").addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    state.rating = +b.dataset.r;
+    this.querySelectorAll("button").forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+  });
+  $("finishBtn").addEventListener("click", function () {
+    var onTime = state.breaks.filter(function (b) { return b.onTime; }).length;
+    var last = {
+      task: state.plan.task,
+      focus: Math.round(state.focusSec / 60),
+      breaks: state.breaks.length ? onTime + "/" + state.breaks.length : "–",
+      ready: state.rating
+    };
+    store("breather-last", last);
+    renderLast(last);
+    state.phases = [];
+    show("s-home");
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && $("endModal").classList.contains("show")) $("endModal").classList.remove("show");
+  });
+
+  /* ---------- Custom break ---------- */
+  var MAX_STEPS = 6;
+  var STEP_HINTS = ["e.g. Boil water", "e.g. Add ginger and tea leaves", "e.g. Drink it away from your desk"];
+  var custom = (function () {
+    var c = load("breather-custom");
+    if (!c || !c.name) return null;
+    if (!c.steps) c.steps = c.how ? [c.how] : [];   // older saved format
+    return { name: c.name, steps: c.steps };
+  })();
+  function renderHomeCustom() {
+    if (custom) {
+      $("homeCustomTitle").textContent = custom.name;
+      $("homeCustomSub").textContent = (custom.steps.length ? custom.steps.length + " step" + (custom.steps.length > 1 ? "s" : "") : "No steps") + " · Tap to edit";
+    } else {
+      $("homeCustomTitle").textContent = "Create your own break";
+      $("homeCustomSub").textContent = "Plan a break your way, step by step";
+    }
+  }
+  function renumber() {
+    var rows = $("stepList").querySelectorAll(".step-row");
+    rows.forEach(function (r, i) {
+      r.querySelector(".n").textContent = i + 1;
+      r.querySelector("input").setAttribute("aria-label", "Step " + (i + 1));
+      if (!r.querySelector("input").value) r.querySelector("input").placeholder = STEP_HINTS[i] || "Add a step";
+      r.querySelector(".rm").setAttribute("aria-label", "Remove step " + (i + 1));
+    });
+    $("addStep").style.display = rows.length >= MAX_STEPS ? "none" : "";
+  }
+  var stepId = 0;
+  function addStepRow(val) {
+    var li = document.createElement("li");
+    li.className = "step-row";
+    var n = document.createElement("span"); n.className = "n"; n.setAttribute("aria-hidden", "true");
+    var input = document.createElement("input"); input.id = "step-" + (stepId++); input.maxLength = 80; input.autocomplete = "off"; input.value = val || "";
+    var rm = document.createElement("button"); rm.className = "rm"; rm.type = "button";
+    rm.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+    rm.addEventListener("click", function () {
+      if ($("stepList").children.length > 1) li.remove(); else input.value = "";
+      renumber();
+    });
+    li.appendChild(n); li.appendChild(input); li.appendChild(rm);
+    $("stepList").appendChild(li);
+    renumber();
+    return input;
+  }
+  function openCustom() {
+    $("customName").value = custom ? custom.name : "";
+    $("customErr").classList.remove("show");
+    $("stepList").innerHTML = "";
+    var steps = custom && custom.steps.length ? custom.steps : ["", "", ""];
+    steps.forEach(function (t) { addStepRow(t); });
+    $("removeCustom").style.display = custom ? "" : "none";
+    show("s-custom");
+  }
+  $("goCustom").addEventListener("click", openCustom);
+  $("customBack").addEventListener("click", function () { show("s-home"); });
+  $("addStep").addEventListener("click", function () { addStepRow("").focus(); });
+  $("customName").addEventListener("input", function () { $("customErr").classList.remove("show"); });
+  $("saveCustom").addEventListener("click", function () {
+    var name = $("customName").value.trim();
+    if (!name) { $("customErr").classList.add("show"); $("customName").focus(); return; }
+    var steps = [];
+    $("stepList").querySelectorAll("input").forEach(function (i) { var v = i.value.trim(); if (v) steps.push(v); });
+    custom = { name: name, steps: steps };
+    store("breather-custom", custom);
+    renderHomeCustom();
+    show("s-home");
+  });
+  $("removeCustom").addEventListener("click", function () {
+    custom = null;
+    try { localStorage.removeItem("breather-custom"); } catch (e) {}
+    renderHomeCustom();
+    show("s-home");
+  });
+
+  /* ---------- Init ---------- */
+  var savedDemo = load("breather-demo");
+  if (savedDemo === false) setDemo(false);
+  renderHomeCustom();
+  renderLast(load("breather-last"));
+  renderPlan();
+})();
+</script>
+</body>
+</html>
