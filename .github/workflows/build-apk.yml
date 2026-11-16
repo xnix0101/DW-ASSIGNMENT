@@ -1,0 +1,63 @@
+# Builds an Android APK of the Breather app every time index.html changes.
+# The finished APK appears under "Releases" on the repo page.
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+    paths: [index.html, .github/workflows/build-apk.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the app files
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Wrap the web app as an Android project
+        run: |
+          mkdir -p apk/www
+          cp index.html apk/www/index.html
+          cd apk
+          npm init -y > /dev/null
+          npm install @capacitor/core@^6 @capacitor/cli@^6 @capacitor/android@^6
+          cat > capacitor.config.json <<'JSON'
+          {
+            "appId": "com.breather.studyplanner",
+            "appName": "Breather",
+            "webDir": "www"
+          }
+          JSON
+          npx cap add android
+          npx cap sync android
+
+      - name: Build the APK
+        run: |
+          cd apk/android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/Breather.apk"
+
+      - name: Publish the APK under Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Breather build ${{ github.run_number }}
+          body: Download Breather.apk below and open it on your Android phone.
+          files: Breather.apk
+          make_latest: true
